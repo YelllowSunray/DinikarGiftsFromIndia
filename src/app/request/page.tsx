@@ -23,19 +23,26 @@ export default function RequestPage() {
       return;
     }
     try {
-      const requestData = {
+      const requestData: any = {
         itemName: formData.itemName,
         description: formData.description,
         budget: parseFloat(formData.budget),
         urgency: formData.urgency as 'low' | 'normal' | 'high' | 'urgent',
         quantity: parseInt(formData.quantity),
-        preferredBrand: formData.preferredBrand || undefined,
-        specialInstructions: formData.specialInstructions || undefined,
         requesterId: user?.id || '',
         requesterName: user?.firstName + ' ' + user?.lastName || user?.username || 'Anonymous',
         requesterLocation: 'Netherlands',
         status: 'pending' as const
       };
+
+      // Only add optional fields if they have content
+      if (formData.preferredBrand.trim()) {
+        requestData.preferredBrand = formData.preferredBrand.trim();
+      }
+      if (formData.specialInstructions.trim()) {
+        requestData.specialInstructions = formData.specialInstructions.trim();
+      }
+
       const result = await addRequest(requestData);
       if (result.success) {
         alert("Your request has been submitted! We'll notify you when a traveler accepts.");
@@ -75,6 +82,8 @@ export default function RequestPage() {
             </div>
             <div className="flex space-x-4">
               <a href="/" className="text-gray-700 hover:text-orange-600">Home</a>
+              <a href="/request" className="text-gray-700 hover:text-orange-600">Request Items</a>
+              <a href="/traveler" className="text-gray-700 hover:text-orange-600">Browse Requests</a>
               {isSignedIn ? (
                 <>
                   <a href="/dashboard" className="text-gray-700 hover:text-orange-600">Dashboard</a>

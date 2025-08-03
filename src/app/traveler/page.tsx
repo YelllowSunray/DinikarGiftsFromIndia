@@ -7,7 +7,7 @@ import type { RequestItem } from "@/lib/firebase-utils";
 
 export default function TravelerPage() {
   const { isSignedIn, user } = useUser();
-  const [activeTab, setActiveTab] = useState("register");
+  const [activeTab, setActiveTab] = useState("requests"); // Changed default to "requests"
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -23,7 +23,7 @@ export default function TravelerPage() {
   const [availableRequests, setAvailableRequests] = useState<RequestItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load available requests
+  // Load available requests automatically when component mounts
   useEffect(() => {
     const loadRequests = async () => {
       setLoading(true);
@@ -38,6 +38,8 @@ export default function TravelerPage() {
         setLoading(false);
       }
     };
+    
+    // Load requests immediately when component mounts
     loadRequests();
   }, []);
 
@@ -65,6 +67,11 @@ export default function TravelerPage() {
       if (result.success) {
         alert("Registration successful! You can now browse available requests.");
         setActiveTab("requests");
+        // Refresh the requests list after registration
+        const updatedResult = await getAvailableRequests();
+        if (updatedResult.success && updatedResult.data) {
+          setAvailableRequests(updatedResult.data);
+        }
       } else {
         alert("Error registering as traveler. Please try again.");
       }
@@ -120,6 +127,8 @@ export default function TravelerPage() {
             </div>
             <div className="flex space-x-4">
               <a href="/" className="text-gray-700 hover:text-orange-600">Home</a>
+              <a href="/request" className="text-gray-700 hover:text-orange-600">Request Items</a>
+              <a href="/traveler" className="text-gray-700 hover:text-orange-600">Browse Requests</a>
               {isSignedIn ? (
                 <>
                   <a href="/dashboard" className="text-gray-700 hover:text-orange-600">Dashboard</a>
@@ -151,16 +160,6 @@ export default function TravelerPage() {
         {/* Tab Navigation */}
         <div className="flex space-x-1 bg-white rounded-lg p-1 mb-8">
           <button
-            onClick={() => setActiveTab("register")}
-            className={`flex-1 py-3 px-4 rounded-md font-medium transition-colors ${
-              activeTab === "register"
-                ? "bg-orange-600 text-white"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Register as Traveler
-          </button>
-          <button
             onClick={() => setActiveTab("requests")}
             className={`flex-1 py-3 px-4 rounded-md font-medium transition-colors ${
               activeTab === "requests"
@@ -170,7 +169,80 @@ export default function TravelerPage() {
           >
             Available Requests
           </button>
+          <button
+            onClick={() => setActiveTab("register")}
+            className={`flex-1 py-3 px-4 rounded-md font-medium transition-colors ${
+              activeTab === "register"
+                ? "bg-orange-600 text-white"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Register as Traveler
+          </button>
         </div>
+
+        {/* Available Requests Tab - Now Default */}
+        {activeTab === "requests" && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Available Requests</h2>
+            {loading ? (
+              <div className="flex justify-center items-center py-20">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading available requests...</p>
+                </div>
+              </div>
+            ) : availableRequests.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                <p className="text-gray-600 mb-4">No requests available at the moment.</p>
+                <p className="text-sm text-gray-500">Check back later or register as a traveler to get notified of new requests.</p>
+              </div>
+            ) : (
+              availableRequests.map((request) => (
+                <div key={request.id} className="bg-white rounded-lg shadow-lg p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900">{request.itemName}</h3>
+                      <p className="text-gray-600 mt-1">{request.description}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
+                        €{request.budget}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid md:grid-cols-4 gap-4 mb-4 text-sm text-gray-600">
+                    <div>
+                      <span className="font-medium">Quantity:</span> {request.quantity}
+                    </div>
+                    <div>
+                      <span className="font-medium">Urgency:</span> {request.urgency}
+                    </div>
+                    <div>
+                      <span className="font-medium">Requester:</span> {request.requesterName}
+                    </div>
+                    <div>
+                      <span className="font-medium">Location:</span> {request.requesterLocation}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-gray-500">
+                      Request ID: #{request.id}
+                    </div>
+                    <button
+                      onClick={() => acceptRequest(request.id || '')}
+                      className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Accept Request
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Registration Form */}
         {activeTab === "register" && (
@@ -354,55 +426,6 @@ export default function TravelerPage() {
                 </div>
               </form>
             )}
-          </div>
-        )}
-
-        {/* Available Requests */}
-        {activeTab === "requests" && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Available Requests</h2>
-            {availableRequests.map((request) => (
-              <div key={request.id} className="bg-white rounded-lg shadow-lg p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900">{request.itemName}</h3>
-                    <p className="text-gray-600 mt-1">{request.description}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
-                      €{request.budget}
-                    </span>
-                  </div>
-                </div>
-                
-                                 <div className="grid md:grid-cols-4 gap-4 mb-4 text-sm text-gray-600">
-                   <div>
-                     <span className="font-medium">Quantity:</span> {request.quantity}
-                   </div>
-                   <div>
-                     <span className="font-medium">Urgency:</span> {request.urgency}
-                   </div>
-                   <div>
-                     <span className="font-medium">Requester:</span> {request.requesterName}
-                   </div>
-                   <div>
-                     <span className="font-medium">Location:</span> {request.requesterLocation}
-                   </div>
-                 </div>
-
-                 <div className="flex justify-between items-center">
-                   <div className="text-sm text-gray-500">
-                     Request ID: #{request.id}
-                   </div>
-                   <button
-                     onClick={() => acceptRequest(request.id || '')}
-                     className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                   >
-                     Accept Request
-                   </button>
-                 </div>
-              </div>
-            ))}
           </div>
         )}
       </div>

@@ -196,7 +196,7 @@ export default function DashboardPage() {
             <div className="flex space-x-4">
               <a href="/" className="text-gray-700 hover:text-orange-600">Home</a>
               <a href="/request" className="text-gray-700 hover:text-orange-600">Request Items</a>
-              <a href="/traveler" className="text-gray-700 hover:text-orange-600">Become a Traveler</a>
+              <a href="/traveler" className="text-gray-700 hover:text-orange-600">Browse Requests</a>
               <SignOutButton>
                 <button className="text-gray-700 hover:text-orange-600">Sign Out</button>
               </SignOutButton>
