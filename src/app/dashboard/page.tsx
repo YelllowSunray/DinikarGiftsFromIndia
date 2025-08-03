@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { UserButton, useUser, SignOutButton } from "@clerk/nextjs";
-import { getUserRequests, getTravelerRequests, getTravelerByUserId } from "@/lib/firebase-utils";
+import { getUserRequests, getTravelerRequests, getTravelerByUserId, addRequest } from "@/lib/firebase-utils";
 import type { RequestItem, Traveler } from "@/lib/firebase-utils";
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 export default function DashboardPage() {
   const { user, isSignedIn } = useUser();
@@ -13,6 +15,55 @@ export default function DashboardPage() {
   const [traveler, setTraveler] = useState<Traveler | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string>("Testing connection...");
+
+  // Test function to create sample data
+  const createSampleRequest = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const sampleRequest = {
+        itemName: "Traditional Indian Spices",
+        description: "Looking for authentic Indian spices like garam masala, turmeric, and cardamom",
+        budget: 25,
+        urgency: 'normal' as const,
+        quantity: 2,
+        preferredBrand: "MDH or Everest",
+        specialInstructions: "Please ensure they are sealed and within expiry date",
+        requesterId: user.id,
+        requesterName: user.firstName + ' ' + user.lastName || user.username || 'User',
+        requesterLocation: "Amsterdam, Netherlands",
+        status: 'pending' as const
+      };
+
+      const result = await addRequest(sampleRequest);
+      if (result.success) {
+        alert('Sample request created successfully! Refresh the page to see it.');
+        window.location.reload();
+      } else {
+        alert('Failed to create sample request: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error creating sample request:', error);
+      alert('Error creating sample request');
+    }
+  };
+
+  // Test Firebase connection
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        // Try to access a collection to test connection
+        const testQuery = await getDocs(collection(db, 'requests'));
+        setConnectionStatus("Connected to Firebase successfully");
+      } catch (error) {
+        console.error('Firebase connection test failed:', error);
+        setConnectionStatus(`Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    };
+
+    testConnection();
+  }, []);
 
   // Load user data - optimized with better error handling and timeouts
   useEffect(() => {
@@ -169,6 +220,16 @@ export default function DashboardPage() {
             {/* Welcome Section */}
             <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
               <h1 className="text-3xl font-bold text-gray-900 mb-4">Welcome back, {user?.firstName || user?.username || 'User'}!</h1>
+              
+              {/* Connection Status */}
+              <div className={`mb-4 p-3 rounded-lg text-sm ${
+                connectionStatus.includes('successfully') 
+                  ? 'bg-green-50 text-green-700 border border-green-200' 
+                  : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+              }`}>
+                <span className="font-medium">Database Status:</span> {connectionStatus}
+              </div>
+              
               <div className="grid md:grid-cols-4 gap-6">
                 <div className="bg-orange-50 rounded-lg p-4">
                   <div className="text-2xl font-bold text-orange-600">{totalRequests}</div>
@@ -230,9 +291,17 @@ export default function DashboardPage() {
                 {myRequests.length === 0 ? (
                   <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                     <p className="text-gray-600 mb-4">You haven't made any requests yet.</p>
-                    <a href="/request" className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors">
-                      Make Your First Request
-                    </a>
+                    <div className="space-x-4">
+                      <a href="/request" className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors">
+                        Make Your First Request
+                      </a>
+                      <button 
+                        onClick={createSampleRequest}
+                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Create Sample Request (Test)
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   myRequests.map((request) => (
